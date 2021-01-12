@@ -20,11 +20,11 @@ export type matchStep<T = any> = (key: T, target: T) => boolean
 
 const defaultStep: matchStep = (key, target) => key === target
 
-export type registerParam<K = string, T = any> = {
+export type RegisterParam<K = string, T = any> = {
     key: K
     store?: T
     option?: object
-    children?: registerParam<K, T>[]
+    children?: RegisterParam<K, T>[]
 }
 
 export default class Store<K = string, T = any> {
@@ -35,7 +35,7 @@ export default class Store<K = string, T = any> {
         Store.matchSteps = steps
     }
 
-    static register<K = string, T = any>(target: Store<K, T>, options: registerParam<K, T> | registerParam<K, T>[]): Store<K, T> {
+    static register<K = string, T = any>(target: Store<K, T>, options: RegisterParam<K, T> | RegisterParam<K, T>[]): Store<K, T> {
         if (isArray(options)) {
             options.forEach(option => {
                 Store.register(target, option)
@@ -94,7 +94,7 @@ export default class Store<K = string, T = any> {
         this.option = assign(defaultStoreOption, option)
     }
 
-    public registerAll(options: registerParam<K, T> | registerParam<K, T>[]) {
+    public registerAll(options: RegisterParam<K, T> | RegisterParam<K, T>[]) {
         return Store.register<K, T>(this, options)
     }
 
@@ -135,5 +135,15 @@ export default class Store<K = string, T = any> {
             if (result.length > 0) return result
         }
         return []
+    }
+
+    public countNext(): number {
+        if (!this.next) return 0
+        return this.next.countNext() + 1
+    }
+
+    public countChildren(): number {
+        if (!this.child) return 0
+        return this.child.countNext() + 1
     }
 }

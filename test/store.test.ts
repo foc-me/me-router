@@ -1,42 +1,43 @@
 import Store from '../src/store'
 
-function arrayStore() {
-    let store = new Store(0, { a: 0 })
+type TestStoreStoreType = { a: number }
+type TestStoreType = Store<number, TestStoreStoreType>
+
+function checkStore(_next: TestStoreType, _count: number, last: boolean){
+    const _store = _next.store
+    test('match store', () => {
+        expect(_store).toEqual({ a: _count })
+        expect(_next.countNext()).toEqual(0)
+        expect(_next.countChildren()).toEqual(last ? 0 : 1)
+    })
+}
+
+export function testStore(store: TestStoreType, len: number = 10) {
     let next = store
-    for (let i = 1; i < 10; i++) {
+    for (let i = 1; i < len; i++) {
         next = next.register(i, { a: i })
     }
     let count = 1
     next = store
 
     while (true) {
-        if (!next || count >= 10) break
+        if (!next || count >= len) break
         const result = next.match(count)
     
-        test('should only have one child', () => {
+        test('should only have one matched', () => {
             expect(result.length).toBe(1)
         })
 
-        next = result[0]
-        if (next) {
-            (function(_nextStore, _count){
-                test('match store', () => {
-                    expect(_nextStore).toEqual({ a: _count })
-                })
-            })(next.store, count)
-
+        if (result.length > 0) {
+            next = result[0]
+            checkStore(next, count, count === len - 1)
             count++
         } else break
     }
     
     test('count stores', () => {
-        expect(count).toBe(10)
+        expect(count).toBe(len)
     })
 }
 
-function treeStore() {
-    
-}
-
-arrayStore()
-treeStore()
+testStore(new Store(0, { a: 0 }))
