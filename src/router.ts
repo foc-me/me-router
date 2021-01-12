@@ -1,7 +1,5 @@
 import { assign, isFunction } from './tool'
-import Store, { registerParam, matchStep } from './store'
-
-const store = new Store('main')
+import Store, { RegisterParam, matchStep } from './store'
 
 function falseFunction(func: any, params?: any): boolean {
     return isFunction(func) && func(params) === false
@@ -19,33 +17,30 @@ const defaultRouterOption: RouterOption = {
     mode: 'nomal'
 }
 
-export default class Router {
-    static register(): Store {
-        return store
-    }
-    // static goTo(path: string): void {}
-
-    option: RouterOption
+export class Router {
+    private option: RouterOption
+    private store: Store
 
     constructor(options?: RouterOption) {
+        this.store = new Store('main')
         this.option = assign(defaultRouterOption, options)
         if (this.option.matchMethod && this.option.matchMethod.length > 0) {
             Store.applyMathSteps(this.option.matchMethod)
         }
     }
 
-    public registerAll(options: registerParam<string, any> | registerParam<string, any>[]) {
-        return store.registerAll(options)
+    public registerAll(options: RegisterParam<string, any> | RegisterParam<string, any>[]) {
+        return this.store.registerAll(options)
     }
 
     public register(path: string, actions?: object, option?: object) {
-        return store.register(path, actions, option)
+        return this.store.register(path, actions, option)
     }
 
     public match(path: string[]) {
         const { beforeMatch, afterMatch, finishMatch } = this.option
         if (falseFunction(beforeMatch)) return
-        const results = Store.match(path, store)
+        const results = Store.match(path, this.store)
         const matchKeys = results.map(res => res.key)
         if (falseFunction(afterMatch, matchKeys)) return
         // results.forEach(res => { })
