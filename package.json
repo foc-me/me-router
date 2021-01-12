@@ -1,28 +1,34 @@
 {
-  "name": "merouter",
+  "name": "me-router",
   "version": "1.0.0",
-  "description": "a simple route",
-  "main": "./dist/router.js",
+  "description": "a simple router",
+  "main": "dist/lib/router.js",
+  "types": "dist/lib/router.d.ts",
+  "files": [
+    "lib",
+    "readme.md",
+    "package.json"
+  ],
   "scripts": {
     "clear": "rimraf ./dist",
-    "build": "yarn clear && rollup --config rollup.config.js",
+    "build": "yarn clear && node script/build.js",
     "build:ts": "yarn clear && ./node_modules/typescript/bin/tsc",
     "tslint": "./node_modules/tslint/bin/tslint --config ./tslint.json ./src/**/*.ts",
     "test": "jest --coverage"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/foc-me/merouter.git"
+    "url": "git+https://github.com/foc-me/me-router.git"
   },
   "keywords": [
-    "route"
+    "web router"
   ],
   "author": "lss",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/foc-me/merouter/issues"
+    "url": "https://github.com/foc-me/me-router/issues"
   },
-  "homepage": "https://github.com/foc-me/merouter#readme",
+  "homepage": "https://github.com/foc-me/me-router#readme",
   "lint-staged": {
     "./src/**/*ts": [
       "tslint"
@@ -46,6 +52,5 @@
     "ts-jest": "^26.4.4",
     "tslint": "^6.1.3",
     "typescript": "^4.1.3"
-  },
-  "dependencies": {}
+  }
 }

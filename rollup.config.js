@@ -1,10 +1,12 @@
-import typescript from 'rollup-plugin-typescript2';
+const typescript = require('rollup-plugin-typescript2')
 
 module.exports = {
     // 核心参数
-    input: './src/index.ts', // 唯一必填参数
+    input: './src/router.ts', // 唯一必填参数
     // external,
-    // plugins,
+    plugins: [
+        typescript({})
+    ],
 
     // 高级参数
     // onwarn,
@@ -17,8 +19,8 @@ module.exports = {
     // legacy
     output: {
         // 核心参数
-        file: './dist/router.js',   // 若有bundle.write，必填
-        format: 'cjs', // 必填
+        file: './dist/lib/router.js',   // 若有bundle.write，必填
+        format: 'cjs' // 必填
         // name,
         // globals,
       
@@ -37,8 +39,5 @@ module.exports = {
         // amd,
         // indent
         // strict
-    },
-    plugins: [
-        typescript({})
-    ]
+    }
 }
