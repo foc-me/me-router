@@ -1,4 +1,4 @@
-import { assign, isArray } from './tool'
+import { assign, isArray, isNil } from './tool'
 
 export interface IStoreItem<K = string, T = any> {
     key: K
@@ -7,18 +7,30 @@ export interface IStoreItem<K = string, T = any> {
     match(key: K | K[]): IStoreItem<K, T>[]
 }
 
+function defaultStep<T = any>(target: T, key: T): boolean {
+    return target === key
+}
+
+export enum MatchMode {
+    first = 'first',
+    all = 'all'
+}
+export enum MatchMethodMode {
+    current = 'current',
+    all = 'all'
+}
+
 export type StoreOption = Partial<{
-    switch: boolean,
-    matchMethod: (() => void)[]
+    matchMode: MatchMode
+    matchMethod: ((...index: any) => boolean)[]
+    matchMethodMode: MatchMethodMode
 }>
 
 const defaultStoreOption: StoreOption = {
-    switch: false
+    matchMode: MatchMode.all,
+    matchMethod: assign([defaultStep]),
+    matchMethodMode: MatchMethodMode.all
 }
-
-export type matchStep<T = any> = (key: T, target: T) => boolean
-
-const defaultStep: matchStep = (key, target) => key === target
 
 export type RegisterParam<K = string, T = any> = {
     key: K
@@ -28,39 +40,6 @@ export type RegisterParam<K = string, T = any> = {
 }
 
 export default class Store<K = string, T = any> {
-
-    static matchSteps: matchStep[] = [defaultStep]
-
-    static applyMathSteps<T = string>(steps: matchStep<T>[]): void {
-        Store.matchSteps = steps
-    }
-
-    static register<K = string, T = any>(target: Store<K, T>, options: RegisterParam<K, T> | RegisterParam<K, T>[]): Store<K, T> {
-        if (isArray(options)) {
-            options.forEach(option => {
-                Store.register(target, option)
-            })
-        } else {
-            const { key, store, option, children } = options
-            const next = target.register(key, store, option)
-            if (children && children.length > 0) {
-                Store.register(next, children)
-            }
-        }
-        return target
-    }
-
-    static match<K = string, T = any>(paths: K[], target: Store<K, T>, steps: matchStep<K>[] = Store.matchSteps): Store<K, T>[] {
-        if (paths.length < 1) return []
-
-        const matchs = [target]
-        let key = paths.shift()
-        while (matchs.length > 0 && key) {
-
-            key = paths.shift()
-        }
-        return matchs
-    }
 
     public key: K
     public store: T | null
@@ -79,14 +58,52 @@ export default class Store<K = string, T = any> {
         this.lastChild = null
     }
 
-    private mathWithSteps(key: K, method: matchStep<K> = defaultStep): Store<K, T>[] {
-        const result: Store<K, T>[] = []
+    private matchStore(paths: K | K[]): Store<K, T>[][] {
+        if (!this.child) return []
+        if (!isArray(paths)) return this.matchStore([paths])
+
+        const path = paths.shift()
+        if (!path) return []
+
+        const result: Store<K, T>[][] = []
+        const { matchMode, matchMethod = [defaultStep] } = this.option
+
         let child = this.child
         while (child) {
-            if (method(key, child.key)) result.push(child)
-            child = child.next
+            let match = matchMethod.reduce((res, next) => {
+                return res ? res : next(path, child.key)
+            }, false)
+            if (match) {
+                if (paths.length > 0) {
+                    const res = child.matchStore(assign(paths))
+                    if (res.length < 1) match = false
+                    else {
+                        if (matchMode === MatchMode.first) {
+                            result.push([this, ...res[0]])
+                        } else {
+                            result.push(...res.map(r => [this, ...r]))
+                        }
+                    }
+                }
+                else {
+                    if (isNil(child.store)) match = false
+                    else result.push([this, child])
+                }
+
+                if (matchMode === MatchMode.first && match) break
+            }
+
+            if (child.next) child = child.next
+            else break
         }
+
         return result
+    }
+
+    public match(paths: K | K[]): (T | null)[][] {
+        if (!isArray(paths)) return this.match([paths])
+        const result = this.matchStore(paths)
+        return result.map(res => res.map(store => store.store))
     }
 
     public override(store?: any, option?: StoreOption) {
@@ -95,10 +112,34 @@ export default class Store<K = string, T = any> {
     }
 
     public registerAll(options: RegisterParam<K, T> | RegisterParam<K, T>[]) {
-        return Store.register<K, T>(this, options)
+        if (isArray(options)) {
+            options.forEach(option => {
+                this.registerAll(option)
+            })
+        } else {
+            const { key, store, option, children } = options
+            const next = this.register(key, store, option)
+            if (next && children && children.length > 0) {
+                next.registerAll(children)
+            }
+        }
+        return this
     }
 
     public register(key: K, store?: any, option?: StoreOption) {
+        if (isNil(key)) throw new TypeError('key can not be null or undefined')
+
+        const { matchMethod, matchMethodMode } = this.option
+        if (matchMethodMode === MatchMethodMode.all && matchMethod && matchMethod.length > 0) {
+            if (option) {
+                if (!option.matchMethod || option.matchMethod.length < 1) {
+                    option.matchMethod = assign(matchMethod)
+                }
+            } else {
+                option = { matchMethod: assign(matchMethod) }
+            }
+        }
+
         let child = this.child
         while (child) {
             if (defaultStep(key, child.key)) break
@@ -121,20 +162,26 @@ export default class Store<K = string, T = any> {
         return child
     }
 
-    public matchAll(path: K, steps = [defaultStep]): (Store<K, T>[])[] {
-        const result = []
-        for (const step of steps) {
-            result.push(this.mathWithSteps(path, step))
-        }
-        return result
-    }
+    public append(store: Store<K, T>) {
+        if (!this.lastChild) {
+            this.child = store
+            this.lastChild = store
+        } else {
+            let child = this.child
+            while (child) {
+                if (child.key === store.key) {
+                    child.override(store.store, store.option)
+                    break
+                }
 
-    public match(path: K, steps = [defaultStep]): Store<K, T>[] {
-        for (const step of steps) {
-            const result = this.mathWithSteps(path, step)
-            if (result.length > 0) return result
+                if (child.next) child = child
+                else {
+                    this.lastChild.next = store
+                    this.lastChild = this.lastChild.next
+                    break
+                }
+            }
         }
-        return []
     }
 
     public countNext(): number {
