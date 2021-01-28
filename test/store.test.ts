@@ -46,3 +46,17 @@ function countTestStore(store: Store<number, TestStore>) {
 
 countTestStore(makeCountStore())
 countTestStore(makeCountStore(countStoreConfig))
+
+function testAppend() {
+    const store = new Store(0, { a: 0 })
+
+    for (let i = 0; i < 10; i++) {
+        if (i < 5) {
+            store.append(new Store(3, { a: i }))
+        } else store.append(new Store(i, { a: i }))
+    }
+
+    test('count child should be 6', () => {
+        expect(store.countChildren()).toBe(6)
+    })
+}

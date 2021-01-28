@@ -1,10 +1,10 @@
-import { assign, isArray, isNil } from './tool'
+import { assign, pick, isArray, isNil } from './tool'
 
 export interface IStoreItem<K = string, T = any> {
     key: K
-    store: T
+    store: T | null
     register(key: K, store?: T): IStoreItem<K, T>
-    match(key: K | K[]): IStoreItem<K, T>[]
+    match(key: K | K[]): (T | null)[][]
 }
 
 function defaultStep<T = any>(target: T, key: T): boolean {
@@ -19,6 +19,8 @@ export enum MatchMethodMode {
     current = 'current',
     all = 'all'
 }
+
+const storeOptionKeys = ['matchMode', 'matchMethod', 'matchMethodMode']
 
 export type StoreOption = Partial<{
     matchMode: MatchMode
@@ -39,7 +41,9 @@ export type RegisterParam<K = string, T = any> = {
     children?: RegisterParam<K, T>[]
 }
 
-export default class Store<K = string, T = any> {
+export type MatchResult<T> = (T | null)[][]
+
+export default class Store<K, T> {
 
     public key: K
     public store: T | null
@@ -48,9 +52,9 @@ export default class Store<K = string, T = any> {
     private child: Store<K, T> | null
     private lastChild: Store<K, T> | null
 
-    constructor(key: K, store?: T, option?: StoreOption) {
+    constructor(key: K, store?: T | null, option?: StoreOption) {
         this.store = store || null
-        this.option = assign(defaultStoreOption, option)
+        this.option = assign(defaultStoreOption, pick(storeOptionKeys, option))
 
         this.key = key
         this.next =  null
@@ -59,23 +63,27 @@ export default class Store<K = string, T = any> {
     }
 
     private matchStore(paths: K | K[]): Store<K, T>[][] {
-        if (!this.child) return []
         if (!isArray(paths)) return this.matchStore([paths])
 
-        const path = paths.shift()
-        if (!path) return []
-
         const result: Store<K, T>[][] = []
-        const { matchMode, matchMethod = [defaultStep] } = this.option
+        if (paths.length < 1) {
+            result.push([this])
+            return result
+        }
+        if (!this.child) return []
 
+        paths = assign(paths)
+        const path = paths.shift()
+        const { matchMode, matchMethod = [defaultStep] } = this.option
         let child = this.child
-        while (child) {
+
+        while (!isNil(path) && child) {
             let match = matchMethod.reduce((res, next) => {
                 return res ? res : next(path, child.key)
             }, false)
             if (match) {
                 if (paths.length > 0) {
-                    const res = child.matchStore(assign(paths))
+                    const res = child.matchStore(paths)
                     if (res.length < 1) match = false
                     else {
                         if (matchMode === MatchMode.first) {
@@ -100,15 +108,17 @@ export default class Store<K = string, T = any> {
         return result
     }
 
-    public match(paths: K | K[]): (T | null)[][] {
+    public match(paths?: K | K[]): MatchResult<T> {
+        if (!paths) return this.match([])
         if (!isArray(paths)) return this.match([paths])
+
         const result = this.matchStore(paths)
         return result.map(res => res.map(store => store.store))
     }
 
-    public override(store?: any, option?: StoreOption) {
-        this.store = store
-        this.option = assign(defaultStoreOption, option)
+    public override(store?: T | null, option?: StoreOption) {
+        if (store) this.store = store
+        if (option) this.option = assign(defaultStoreOption, pick(storeOptionKeys, option))
     }
 
     public registerAll(options: RegisterParam<K, T> | RegisterParam<K, T>[]) {
@@ -126,7 +136,7 @@ export default class Store<K = string, T = any> {
         return this
     }
 
-    public register(key: K, store?: any, option?: StoreOption) {
+    public register(key: K, store?: T, option?: StoreOption) {
         if (isNil(key)) throw new TypeError('key can not be null or undefined')
 
         const { matchMethod, matchMethodMode } = this.option
