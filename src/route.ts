@@ -5,12 +5,33 @@ type RouteOptions = {
     defaults: Record<string | number, any>
 }
 
-const optionKeys = ['defaults']
+const optionKeys = [
+    'defaults'
+]
 
-type ActionKeys = 'beforeView' | 'toView' | 'afterView' | 'beforeRemov' | 'toRemove' | 'afterRemove'
-type RouteActions = Record<ActionKeys, (...i: any) => void>
+type ActionKeys = // 'beforeMatch' |
+    'toMatch' |
+    // 'afterMatch' |
+    // 'beforeView' |
+    'toView' |
+    // 'afterView' |
+    // 'beforeRemov' |
+    'toRemove' // |
+    // 'afterRemove'
 
-const actionKeys = ['beforeView', 'toView', 'afterView', 'beforeRemov', 'toRemove', 'afterRemove']
+type RouteActions = Record<ActionKeys, (...i: any) => void | any>
+
+const actionKeys = [
+    // 'beforeMatch',
+    'toMatch',
+    // 'afterMatch',
+    // 'beforeView',
+    'toView',
+    // 'afterView',
+    // 'beforeRemov',
+    'toRemove' // ,
+    // 'afterRemove'
+]
 
 export type RouteProps = Partial<RouteOptions & RouteActions>
 
@@ -20,75 +41,64 @@ export interface IRouteItem {
     actions: Partial<RouteActions>
 }
 
-function isParam(path: string): boolean {
-    return path.indexOf(':') === 0
-}
-function fixParam(path: string): string {
-    return path.indexOf(':') === 0 ? path.substr(1) : path
-}
+type RouteContext = null | Record<string | number, any>
 
-function isAllMatch(path: string) {
-    return path === '*' || path === '**'
-}
-
-export const matchMethod = [
-    (target: string, key: string) => target === key,
-    (target: string, key: string) => isParam(key),
-    (target: string, key: string) => isAllMatch(key)
-]
-
-export function action(paths: string[], matchs: (Route | null)[][]) {
-    if (matchs.length > 0) {
-        matchs.forEach(routes => {
-            const deviation = routes.length - paths.length
-            if (deviation < 0 || deviation > 1) return
-
-            let params: any = {}
-            let result: any
-
-            routes.forEach((route, i) => {
-                if (!route) return
-
-                const path = i < 1 ? route.route : paths[i - deviation]
-                const { defaults } = route.options
-                const {
-                    beforeView,
-                    toView,
-                    afterView,
-                    beforeRemov,
-                    toRemove,
-                    afterRemove
-                } = route.actions
-
-                if (isParam(route.route)) {
-                    params[fixParam(route.route)] = path
-                }
-
-                if (isFunction(beforeView)) {
-                    params = beforeView(assign(params, defaults))
-                } else {
-                    params = assign(params, defaults)
-                }
-                if (isFunction(toView)) toView(params)
-                if (isFunction(afterView)) afterView(params)
-                if (isFunction(beforeRemov)) result = beforeRemov(params)
-                if (isFunction(toRemove)) toRemove(result)
-                if (isFunction(afterRemove)) afterRemove(result)
-            })
-        })
-    }
+export enum RouteStatus {
+    onInit = 'onInit',
+    onReady = 'onReady',
+    onMatch = 'onMatch',
+    onView = 'onView'
 }
 
 export default class Route {
 
-    public static action = action
-
+    public status: RouteStatus = RouteStatus.onInit
     public route: string
     public options: Pick<RouteProps, OptionKeys>
     public actions: Pick<RouteProps, ActionKeys>
-    constructor(route: string, option: RouteProps) {
+
+    private context: RouteContext = null
+
+    constructor(route: string, option: object) {
         this.route = route
         this.options = pick(optionKeys, option)
         this.actions = pick(actionKeys, option)
+
+        this.resetContext()
+    }
+
+    private resetContext() {
+        this.status = RouteStatus.onReady
+        this.context = assign(this.options.defaults || {})
+    }
+
+    public onMatch(option?: any) {
+        const { toMatch } = this.actions
+
+        if (this.status === RouteStatus.onReady && isFunction(toMatch)) {
+            this.context = toMatch(assign(this.context || {}, option)) || {}
+        }
+
+        this.status = RouteStatus.onMatch
+    }
+
+    public onView(option?: any) {
+        const { toView } = this.actions
+
+        if (this.status === RouteStatus.onMatch && isFunction(toView)) {
+            this.context = toView(assign(this.context || {}, option)) || {}
+        }
+
+        this.status = RouteStatus.onView
+    }
+
+    public onRemove(option?: any) {
+        const { toRemove } = this.actions
+
+        if (this.status === RouteStatus.onView && isFunction(toRemove)) {
+            this.context = toRemove(assign(this.context || {}, option)) || {}
+        }
+
+        this.resetContext()
     }
 }
