@@ -20,7 +20,7 @@ module.exports = {
     output: {
         // 核心参数
         file: './dist/lib/router.js',   // 若有bundle.write，必填
-        format: 'cjs' // 必填
+        format: 'cjs', // 必填
         // name,
         // globals,
       
@@ -35,7 +35,7 @@ module.exports = {
         // interop,
       
         // 危险区域
-        // exports,
+        exports: 'default',
         // amd,
         // indent
         // strict

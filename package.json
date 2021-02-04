@@ -11,7 +11,8 @@
   ],
   "scripts": {
     "clear": "rimraf ./dist",
-    "build": "yarn clear && node script/build.js",
+    "watch": "yarn build && node script/watch.js",
+    "build": "node script/build.js",
     "build:ts": "yarn clear && ./node_modules/typescript/bin/tsc",
     "tslint": "./node_modules/tslint/bin/tslint --config ./tslint.json ./src/**/*.ts",
     "test": "jest --coverage"
