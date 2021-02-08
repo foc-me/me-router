@@ -14,7 +14,7 @@ export function isFunction(func: any): func is (...i: any) => void | any {
     return func && typeof func === 'function'
 }
 
-export function pick<T extends object>(keys: string[], target: Record<string | number, any> = {}): T {
+export function pick<T extends {}>(keys: string[], target: Record<string | number, any> = {}): T {
     const result: Record<string | number, any> = {}
 
     for (const key of Object.keys(target)) {
@@ -28,13 +28,12 @@ export function pick<T extends object>(keys: string[], target: Record<string | n
     return result as T
 }
 
-export function assign<T extends object>(target: T, value?: object, extend: boolean = false): T {
-    if (extend) return Object.assign(target, value)
-    else {
+export function assign<T extends {}>(target: T, value?: object, extend: boolean = false): T {
+    if (!extend) {
         if (isArray(target)) return Object.assign([], target, value)
         if (typeof target === 'object') return Object.assign({}, target, value)
-        return Object.assign(target, value)
     }
+    return Object.assign(target, value)
 }
 
 export enum EnvStatus {
@@ -48,3 +47,13 @@ export function modifyEnv(status: string) {
         process.env.NODE_ENV = nev
     }
 }
+
+// export function makeHash(str: string): number {
+//     let hash = 0
+//     for (let i = 0; i < str.length; i++) {
+//       let chr   = str.charCodeAt(i);
+//       hash  = ((hash << 5) - hash) + chr;
+//       hash |= 0;
+//     }
+//     return hash;
+// }
