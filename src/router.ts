@@ -61,6 +61,9 @@ export default class Router {
         this.store = new Store<string, Route>(baseUrl, baseRoute, { matchMethod })
 
         if (!this.context && window) {
+            window.addEventListener('popstate', () => {
+                this.match()
+            })
             window.addEventListener('load', () => {
                 this.match()
             })

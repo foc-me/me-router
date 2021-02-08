@@ -26,7 +26,8 @@ function toRemove(current: RouterContext, next: RouterContext) {
         run(() => {
             routes.forEach(route => {
                 if (!route) return
-                if (!next || !inMatchStores(route, next.stores)) route.onRemove()
+                if (next && inMatchStores(route, next.stores)) route.onHide()
+                else route.onRemove()
             })
         })
     })

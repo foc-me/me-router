@@ -92,11 +92,8 @@ export default class Store<K, T> {
                             result.push(...res.map(r => [this, ...r]))
                         }
                     }
-                }
-                else {
-                    if (isNil(child.store)) match = false
-                    else result.push([this, child])
-                }
+                } else if (child.store) result.push([this, child])
+                else match = false
 
                 if (matchMode === MatchMode.first && match) break
             }

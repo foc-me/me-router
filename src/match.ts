@@ -1,3 +1,7 @@
+export function isIgnoreParam(path: string): boolean {
+    return path.indexOf('?:') === 0
+}
+
 export function isParam(path: string): boolean {
     return path.indexOf(':') === 0
 }
