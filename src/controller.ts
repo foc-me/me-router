@@ -1,8 +1,8 @@
-import { isParam } from './match'
+import { fixParam, isParam } from './match'
 import Route from './route'
 import /* Route, */{ RouterContext } from './router'
 import { MatchResult } from './store'
-import { assign } from './tool'
+import { assign, isNil } from './tool'
 
 function run(fn: () => void) {
     setTimeout(fn)
@@ -38,25 +38,16 @@ function toView(next: RouterContext) {
 
     const { keys, stores } = next
     stores.forEach(routes => {
-        if (routes.length < 1 || routes.length !== keys.length + 1) return
-        run(() => {
-            // let context: Record<string | number, any> = {}
-            // routes.forEach((route, i) => {
-            //     if (!route) return
-            //     if (isParam(route.route)) {
-            //         context[route.route] = keys[i + 1]
-            //     }
-            // })
+        const check = [1, 2].includes(routes.length - keys.length)
+        if (routes.length < 1 || !check) return
 
-            // routes.forEach((route, i) => {
-            //     if (!route) return
-            //     route.onMatch()
-            //     if (i === routes.length - 1) route.onView()
-            // })
+        run(() => {
             routes.reduce((context, route, i) => {
                 if (route) {
-                    if (isParam(route.route)) {
-                        context = assign(context, { [route.route]: keys[i + 1] }, true)
+                    if (isParam(route.route) && !isNil(keys[i - 1])) {
+                        context = assign(context, {
+                            [fixParam(route.route)]: keys[i - 1]
+                        }, true)
                     }
                     route.onMatch(context)
                     if (i === routes.length - 1) route.onView(context)

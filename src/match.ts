@@ -2,12 +2,16 @@ export function isIgnoreParam(path: string): boolean {
     return path.indexOf('?:') === 0
 }
 
+export function fixIgnoreParam(path: string): string {
+    return isIgnoreParam(path) ? path.substr(1) : path
+}
+
 export function isParam(path: string): boolean {
     return path.indexOf(':') === 0
 }
 
 export function fixParam(path: string): string {
-    return path.indexOf(':') === 0 ? path.substr(1) : path
+    return isParam(path) ? path.substr(1) : path
 }
 
 export function isAllMatch(path: string) {
