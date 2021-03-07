@@ -20,9 +20,10 @@ export enum MatchMethodMode {
     all = 'all'
 }
 
-const storeOptionKeys = ['matchMode', 'matchMethod', 'matchMethodMode']
+const storeOptionKeys = ['default', 'matchMode', 'matchMethod', 'matchMethodMode']
 
 export type StoreOption = Partial<{
+    default: boolean,
     matchMode: MatchMode
     matchMethod: ((...index: any) => boolean)[]
     matchMethodMode: MatchMethodMode
@@ -62,6 +63,21 @@ export default class Store<K, T> {
         this.lastChild = null
     }
 
+    private getDefault() {
+        const result: Store<K, T>[][] = []
+        const { matchMode } = this.option
+        let child = this.child
+        while (child) {
+            if (child.option.default) {
+                result.push([this, child])
+                if (matchMode === MatchMode.first) return result
+            }
+
+            child = child.next
+        }
+        return result
+    }
+
     private matchStore(paths: K | K[]): Store<K, T>[][] {
         if (!isArray(paths)) return this.matchStore([paths])
 
@@ -92,8 +108,15 @@ export default class Store<K, T> {
                             result.push(...res.map(r => [this, ...r]))
                         }
                     }
-                } else if (child.store) result.push([this, child])
-                else match = false
+                } else {
+                    if (child.store) result.push([this, child])
+                    else {
+                        const defaultRoutes = child.getDefault()
+                        if (defaultRoutes.length > 0) {
+                            result.push(...defaultRoutes.map(r => [this, ...r]))
+                        } else match = false
+                    }
+                }
 
                 if (matchMode === MatchMode.first && match) break
             }
@@ -133,8 +156,8 @@ export default class Store<K, T> {
         return this
     }
 
-    public register(key: K, store?: T, option?: StoreOption) {
-        if (isNil(key)) throw new TypeError('key can not be null or undefined')
+    public register(key: K, store?: T | null, option?: StoreOption) {
+        if (isNil(key)) throw new TypeError('`key` can not be null or undefined')
 
         const { matchMethod, matchMethodMode } = this.option
         if (matchMethodMode === MatchMethodMode.all && matchMethod && matchMethod.length > 0) {
@@ -142,9 +165,7 @@ export default class Store<K, T> {
                 if (!option.matchMethod || option.matchMethod.length < 1) {
                     option.matchMethod = assign(matchMethod)
                 }
-            } else {
-                option = { matchMethod: assign(matchMethod) }
-            }
+            } else option = { matchMethod: assign(matchMethod) }
         }
 
         let child = this.child
@@ -153,15 +174,13 @@ export default class Store<K, T> {
             child = child.next
         }
 
-        if (child) {
-            child.override(store, option)
-        } else {
+        if (child) child.override(store, option)
+        else {
             child = new Store<K, T>(key, store, option)
             if (this.lastChild) {
                 this.lastChild.next = child
                 this.lastChild = child
-            }
-            else {
+            } else {
                 this.child = child
                 this.lastChild = child
             }

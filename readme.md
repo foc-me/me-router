@@ -1,6 +1,8 @@
 # me-router #
 
 ## feature ##
-todo: route: route context
-todo: route: onHide event
-todo: store: match ignored parameter
+todo route: route context           - done
+todo route: onHide event            - done
+todo store: match ignored parameter - done
+todo store: match **
+todo router: redirect

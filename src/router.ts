@@ -1,6 +1,6 @@
 import { assign, isFunction, isNil, pick } from './tool'
 import Store, { StoreOption, MatchResult } from './store'
-import matchMethod from './match'
+import matchMethod, { isIgnoreParam, fixIgnoreParam } from './match'
 import Route, { RouteProps } from './route'
 import Controller from './controller'
 import { push, replace, go, getLocation, checkHistory } from './history'
@@ -16,7 +16,7 @@ export type RouterOption = Partial<{
     beforeMatch: () => void
     afterMatch: () => void
     finishMatch: () => void
-} & RouteProps & StoreOption>
+}>
 
 const routerOptionKeys = ['baseUrl', 'urlCheck', 'beforeMatch', 'afterMatch', 'finishMatch']
 
@@ -50,6 +50,9 @@ export default class Router {
     private store: Store<string, Route>
     private context: RouterContext = null
 
+    public install: () => void = () => {}
+    public uninstall: () => void = () => {}
+
     constructor(options?: RouterOption) {
         if (options && options.baseUrl) {
             options.baseUrl = checkBaseUrl(options.baseUrl)
@@ -61,12 +64,17 @@ export default class Router {
         this.store = new Store<string, Route>(baseUrl, baseRoute, { matchMethod })
 
         if (!this.context && window) {
-            window.addEventListener('popstate', () => {
-                this.match()
-            })
-            window.addEventListener('load', () => {
-                this.match()
-            })
+            const listener = () => { this.match() }
+            this.install = () => {
+                window.addEventListener('popstate', listener)
+                window.addEventListener('load', listener)
+            }
+            this.uninstall = () => {
+                window.removeEventListener('popstate', listener)
+                window.removeEventListener('load', listener)
+            }
+
+            this.install()
         }
     }
 
@@ -117,7 +125,7 @@ export default class Router {
 
     public register(path: string, options?: RouteProps) {
         const parts = splitUrl(path)
-        const last = parts.pop()
+        let last = parts.pop()
         let store = this.store
 
         for (const key of parts) {
@@ -125,8 +133,12 @@ export default class Router {
         }
 
         if (typeof last === 'string') {
-            const item = options ? new Route(last, options) : undefined
-            store.register(last, item)
+            const bo = isIgnoreParam(last)
+            last = bo ? fixIgnoreParam(last) : last
+            const storeOption: StoreOption = bo ? { default: true } : {}
+
+            const item = options ? new Route(last, options) : null
+            store.register(last, item, storeOption)
         }
     }
 }
